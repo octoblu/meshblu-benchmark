@@ -18,7 +18,6 @@ class CommandMessageWebhook
       .parse process.argv
 
     {@host,@port,@numberOfTimes} = commander
-    console.log @numberOfTimes
 
     @forwardCredentials = commander.forwardCredentials ? false
 
@@ -29,32 +28,31 @@ class CommandMessageWebhook
     @parseOptions()
 
     @register (error, device) =>
-      return callback error if error?
+      return @die error if error?
 
-      async.mapSeries _.times(@numberOfTimes), (n, done) =>
-        @singleRun device, done
-      , (error, results) =>
-        return @die error if error?
-        average = _.sum(results) / results.length
-        console.log "average: #{average}ms"
-        process.exit 0
+      @startServer (error) =>
+        return callback error if error?
+
+        async.mapSeries _.times(@numberOfTimes), (n, done) =>
+          @singleRun device, done
+        , (error, results) =>
+          return @die error if error?
+          average = _.sum(results) / results.length
+          console.log "average: #{average}ms"
+          process.exit 0
 
   singleRun: (device, callback) =>
     benchmark = new Benchmark label: 'message-webhook'
 
-    @startServer (error) =>
+
+    async.parallel [
+      @listenForMessage
+      async.apply @message, device
+    ], (error) =>
       return callback error if error?
 
-      async.parallel [
-        @listenForMessage
-        async.apply @message, device
-      ], (error) =>
-        return callback error if error?
-
-        console.log benchmark.toString()
-        @stopServer (error) =>
-          return callback error if error?
-          callback(null, benchmark.elapsed())
+      console.log benchmark.toString()
+      callback(null, benchmark.elapsed())
 
 
   register: (callback) =>
@@ -83,17 +81,19 @@ class CommandMessageWebhook
 
   listenForMessage: (callback) =>
     debug 'listenForMessage'
-    @server.on 'connection', (socket) =>
+    listener = (socket) =>
       buffer = new Buffer(0)
 
       socket.on 'readable', =>
         while data = socket.read()
           buffer = Buffer.concat [buffer, data]
         socket.end()
+        @server.removeListener 'connection', listener
 
       socket.on 'error', callback
       socket.on 'end',   callback
 
+    @server.on 'connection', listener
   deviceOptions: =>
     meshblu:
       messageHooks: [

@@ -41,6 +41,7 @@
     "colors": "^1.1.2",
     "commander": "^2.8.1",
     "debug": "^2.2.0",
+    "lodash": "^3.10.1",
     "meshblu-config": "^3.1.1",
     "meshblu-http": "^3.5.4"
   }
