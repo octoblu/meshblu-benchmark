@@ -6,6 +6,12 @@
   "scripts": {
     "test": "istanbul cover _mocha -- -R spec"
   },
+  "bin": {
+    "meshblu-benchmark": "./command.js",
+    "meshblu-benchmark-message-webhook": "./command-message-webhook.js",
+    "mb": "./command.js",
+    "mb-message-webhook": "./command-message-webhook.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/octoblu/meshblu-benchmark.git"
@@ -29,5 +35,13 @@
     "mocha-istanbul": "^0.2.0",
     "sinon": "^1.17.1",
     "sinon-chai": "^2.8.0"
+  },
+  "dependencies": {
+    "async": "^1.4.2",
+    "colors": "^1.1.2",
+    "commander": "^2.8.1",
+    "debug": "^2.2.0",
+    "meshblu-config": "^3.1.1",
+    "meshblu-http": "^3.5.4"
   }
 }
