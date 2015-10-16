@@ -54,7 +54,6 @@ class CommandMessageWebhook
       console.log benchmark.toString()
       callback(null, benchmark.elapsed())
 
-
   register: (callback) =>
     debug 'register'
     config = new MeshbluConfig
@@ -94,6 +93,7 @@ class CommandMessageWebhook
       socket.on 'end',   callback
 
     @server.on 'connection', listener
+
   deviceOptions: =>
     meshblu:
       messageHooks: [

@@ -45,6 +45,8 @@
     "meshblu-config": "^3.1.1",
     "meshblu-http": "^3.5.4",
     "meshblu-websocket": "^2.2.0",
+    "request": "^2.65.0",
+    "simple-benchmark": "^1.0.0",
     "uuid": "^2.0.1"
   }
 }
