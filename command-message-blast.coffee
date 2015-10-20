@@ -14,30 +14,34 @@ class CommandMessageWebhook
     commander
       .option '-c, --cycles [n]', 'number of cycles to run (defaults to 10)', @parseInt, 10
       .option '-n, --number-of-messages [n]', 'Number of parallel messages per second (defaults to 1)', @parseInt, 1
+      .option '-t, --type [type]', 'Type of connection to use (defaults to http)', 'http'
       .parse process.argv
 
-    {@numberOfMessages,@cycles} = commander
+    {@numberOfMessages,@cycles,@type} = commander
 
   run: =>
     @parseOptions()
     @elapsedTimes = []
     @startTimes = {}
+    @messages = []
     @currentCycle = 0
 
     console.log 'pid: ', process.pid
-    process.on 'SIGINT', @printAverageAndDie
-    process.on 'exit', @printAverageAndDie
 
     @registerReceiverAndSenders (error, receiver, senders) =>
       @die error if error?
 
       setInterval (=> @blast receiver, with: senders), 1000
 
+  averageTimeBetween: (times, begin, end) =>
+    differences = _.map times, (time) => time[end] - time[begin]
+    _.sum(differences) / _.size(differences)
+
   blast: (receiver, {with: senders}) =>
     return @printAverageAndDie() if @currentCycle >= @cycles
     @currentCycle += 1
 
-    debug 'blast', @currentCycle, @cycles
+    # _.defer => debug 'blast', @currentCycle, @cycles
     async.each senders, (sender, done) =>
       @message from: sender, to: receiver, done
 
@@ -55,14 +59,28 @@ class CommandMessageWebhook
       devices: [receiver.uuid]
       payload:
         messageId: messageId
+        times:
+          start: Date.now()
 
-    @startTimes[messageId] = Date.now()
+    @startTimes[messageId] = message.payload.times.start
 
-    meshbluConfig = new MeshbluConfig
-    config = _.extend meshbluConfig.toJSON(), _.pick(sender, 'uuid', 'token')
+    @["#{@type}Message"] from: sender, to: receiver, message
 
-    meshbluHttp = new MeshbluHttp config
-    meshbluHttp.message message, callback
+  httpMessage: ({from: sender, to: receiver}, message) =>
+    start = message.payload.times.start
+    sender.message message #, =>
+      # end = Date.now()
+      # @elapsedTimes.push(end - start)
+
+
+  websocketMessage: ({from: sender, to: receiver}, message) =>
+    receiver.message message
+    # senderSocket = new MeshbluWebsocket sender
+    # senderSocket.connect (error) =>
+    #   return callback error if error?
+    #   senderSocket.message message
+    #   senderSocket.ws.close()
+    # sender.message message, callback
 
   parseInt: (str) =>
     parseInt str
@@ -77,21 +95,27 @@ class CommandMessageWebhook
 
     # startTime = message.payload.startTime
     return unless startTime?
-
     elapsedTime = endTime - startTime
     @elapsedTimes.push elapsedTime
+
+    message.payload.times.end = endTime
+    @messages.push message.payload.times
 
     # debug "onMessage", elapsedTime: elapsedTime
 
   printAverageAndDie: =>
-    average = _.sum(@elapsedTimes) / _.size(@elapsedTimes)
-    debug
-      averageElapsedTime: average
-      danglingMessages: _.size(_.keys(@startTimes))
-      successfulRoundTrips: _.size(@elapsedTimes)
-      percentile90: @nthPercentile(90, @elapsedTimes)
-      median: @nthPercentile(50, @elapsedTimes)
-    process.exit 0
+    setTimeout =>
+      average = _.sum(@elapsedTimes) / _.size(@elapsedTimes)
+      debug
+        averageElapsedTime: average
+        danglingMessages: _.size(_.keys(@startTimes))
+        successfulRoundTrips: _.size(@elapsedTimes)
+        percentile90: @nthPercentile(90, @elapsedTimes)
+        median: @nthPercentile(50, @elapsedTimes)
+        averageRoutedToEnd: @averageTimeBetween @messages, 'routed', 'end'
+        averageParseStartToEnd: @averageTimeBetween @messages, 'parseStart', 'end'
+      process.exit 0
+    , 2000
 
   register: (callback) =>
     benchmark = new Benchmark label: 'register'
@@ -117,7 +141,16 @@ class CommandMessageWebhook
     async.timesLimit @numberOfMessages, 50, @registerSender, callback
 
   registerSender: (i, callback) =>
-    @register callback
+    @register (error, device) =>
+      meshbluConfig = new MeshbluConfig
+      config = _.extend meshbluConfig.toJSON(), _.pick(device, 'uuid', 'token')
+
+      # sender = new MeshbluWebsocket config
+      # sender.connect (error) =>
+      #   callback error, sender
+      sender = new MeshbluHttp config
+      callback error, sender
+      # callback error, config
 
   singleRun: (device, callback) =>
     benchmark = new Benchmark label: 'message-webhook'
@@ -133,13 +166,20 @@ class CommandMessageWebhook
 
   subscribeToDevice: (device, callback) =>
     meshbluConfig = new MeshbluConfig
-    config = _.extend meshbluConfig.toJSON(), _.pick(device, 'uuid', 'token')
+    config =
+      uuid: device.uuid
+      token: device.token
+      server: 'meshblu.octoblu.com'
+      hostname: 'meshblu.octoblu.com'
+      port: '80'
+      protocol: 'http'
     conn = new MeshbluWebsocket config
     conn.connect (error) =>
       debug 'subscribeToDevice', error
       return callback error if error?
       conn.on 'message', @onMessage
-      callback error, device
+      conn.uuid = device.uuid
+      callback error, conn
 
   nthPercentile: (percentile, array) =>
     array = _.sortBy array
