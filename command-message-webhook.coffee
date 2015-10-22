@@ -19,7 +19,7 @@ class CommandMessageWebhook
 
     {@host,@port,@numberOfTimes} = commander
 
-    @forwardCredentials = commander.forwardCredentials ? false
+    @forwardCredentials = commander.credentials ? false
 
   parseInt: (str) =>
     parseInt str
@@ -44,14 +44,12 @@ class CommandMessageWebhook
   singleRun: (device, callback) =>
     benchmark = new Benchmark label: 'message-webhook'
 
-
     async.parallel [
       @listenForMessage
       async.apply @message, device
     ], (error) =>
       return callback error if error?
 
-      console.log benchmark.toString()
       callback(null, benchmark.elapsed())
 
   register: (callback) =>
@@ -63,8 +61,13 @@ class CommandMessageWebhook
 
   message: (device, callback) =>
     debug 'message'
-    meshbluConfig = new MeshbluConfig
-    config = _.extend meshbluConfig.toJSON(), _.pick(device, 'uuid', 'token')
+    # meshbluConfig = new MeshbluConfig
+    # config = _.extend meshbluConfig.toJSON(), _.pick(device, 'uuid', 'token')
+    config =
+      uuid:  device.uuid
+      token: device.token
+      server: 'localhost'
+      port: '6000'
 
     meshbluHttp = new MeshbluHttp config
     meshbluHttp.message devices: [device.uuid], callback
@@ -79,6 +82,7 @@ class CommandMessageWebhook
     @server.close callback
 
   listenForMessage: (callback) =>
+    return callback()
     debug 'listenForMessage'
     listener = (socket) =>
       buffer = new Buffer(0)
@@ -98,8 +102,8 @@ class CommandMessageWebhook
     meshblu:
       messageHooks: [
         {
-          url: "http://#{@host}:#{@port}"
-          method: "POST"
+          url: "http://#{@host}:#{@port}/0"
+          method: "GET"
           generateAndForwardMeshbluCredentials: @forwardCredentials
         }
       ]

@@ -73,7 +73,7 @@ class CommandMassHealthcheck
         median: @nthPercentile(50, @elapsedTimes)
       , null, 2
       process.exit 0
-    , 20000
+    , 2000
 
   nthPercentile: (percentile, array) =>
     array = _.sortBy array

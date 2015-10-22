@@ -57,6 +57,7 @@ class CommandMessageWebhook
 
     message =
       devices: [receiver.uuid]
+      topic: 'make peter happy'
       payload:
         messageId: messageId
         times:
@@ -69,18 +70,9 @@ class CommandMessageWebhook
   httpMessage: ({from: sender, to: receiver}, message) =>
     start = message.payload.times.start
     sender.message message #, =>
-      # end = Date.now()
-      # @elapsedTimes.push(end - start)
-
 
   websocketMessage: ({from: sender, to: receiver}, message) =>
     receiver.message message
-    # senderSocket = new MeshbluWebsocket sender
-    # senderSocket.connect (error) =>
-    #   return callback error if error?
-    #   senderSocket.message message
-    #   senderSocket.ws.close()
-    # sender.message message, callback
 
   parseInt: (str) =>
     parseInt str
@@ -89,6 +81,10 @@ class CommandMessageWebhook
     endTime = Date.now()
     messageId = message?.payload?.messageId
     return unless messageId?
+
+    @receivedMessages ?= {}
+    @receivedMessages[messageId] ?= 0
+    @receivedMessages[messageId] += 1
 
     startTime = @startTimes[messageId]
     delete @startTimes[messageId]
@@ -112,8 +108,9 @@ class CommandMessageWebhook
         successfulRoundTrips: _.size(@elapsedTimes)
         percentile90: @nthPercentile(90, @elapsedTimes)
         median: @nthPercentile(50, @elapsedTimes)
-        averageRoutedToEnd: @averageTimeBetween @messages, 'routed', 'end'
-        averageParseStartToEnd: @averageTimeBetween @messages, 'parseStart', 'end'
+        averageHttpToEnd: @averageTimeBetween @messages, 'http', 'end'
+        averageWorkerToEnd: @averageTimeBetween @messages, 'worker', 'end'
+        medianNumberOfMessagesReceived: @nthPercentile 50, @receivedMessages
       process.exit 0
     , 2000
 
@@ -148,6 +145,13 @@ class CommandMessageWebhook
       # sender = new MeshbluWebsocket config
       # sender.connect (error) =>
       #   callback error, sender
+      config =
+        uuid: 'c780403c-6b43-46be-9357-728d476f84c7'
+        token: '1979780f49d488f41293f70ff1baec9be910cf9b'
+        server: 'localhost'
+        port: '6000'
+        protocol: 'http'
+
       sender = new MeshbluHttp config
       callback error, sender
       # callback error, config
@@ -166,19 +170,23 @@ class CommandMessageWebhook
 
   subscribeToDevice: (device, callback) =>
     meshbluConfig = new MeshbluConfig
+    config = meshbluConfig.toJSON()
+    # config.uuid  = device.uuid
+    # config.token = device.token
     config =
-      uuid: device.uuid
-      token: device.token
-      server: 'meshblu.octoblu.com'
-      hostname: 'meshblu.octoblu.com'
-      port: '80'
+      uuid: '7a9f8f80-4712-47be-a100-f0579836a9b9'
+      token: 'cdbc4fa219d40088b3189b66af27e051a8fa358e'
+      hostname: 'localhost'
+      port: '3000'
       protocol: 'http'
+
     conn = new MeshbluWebsocket config
     conn.connect (error) =>
       debug 'subscribeToDevice', error
       return callback error if error?
       conn.on 'message', @onMessage
-      conn.uuid = device.uuid
+      # conn.uuid = device.uuid
+      conn.uuid = config.uuid
       callback error, conn
 
   nthPercentile: (percentile, array) =>
