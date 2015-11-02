@@ -5,7 +5,7 @@ colors = require 'colors'
 MeshbluHttp = require 'meshblu-http'
 MeshbluConfig = require 'meshblu-config'
 debug     = require('debug')('meshblu-benchmark:message-webhook')
-{Server}  = require 'net'
+{Server}  = require 'http'
 Benchmark = require './src/benchmark'
 
 class CommandMessageWebhook
@@ -82,21 +82,15 @@ class CommandMessageWebhook
     @server.close callback
 
   listenForMessage: (callback) =>
-    return callback()
     debug 'listenForMessage'
-    listener = (socket) =>
-      buffer = new Buffer(0)
+    listener = (request,response) =>
+      response.end()
+      console.log request.headers.date
+      console.log request.headers.authorization
+      @server.removeListener 'request', listener
 
-      socket.on 'readable', =>
-        while data = socket.read()
-          buffer = Buffer.concat [buffer, data]
-        socket.end()
-        @server.removeListener 'connection', listener
+    @server.on 'request', listener
 
-      socket.on 'error', callback
-      socket.on 'end',   callback
-
-    @server.on 'connection', listener
 
   deviceOptions: =>
     meshblu:

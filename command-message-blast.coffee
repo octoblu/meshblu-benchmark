@@ -74,8 +74,7 @@ class CommandMessageWebhook
   websocketMessage: ({from: sender, to: receiver}, message) =>
     receiver.message message
 
-  parseInt: (str) =>
-    parseInt str
+  parseInt: (str) => parseInt str
 
   onMessage: (message) =>
     endTime = Date.now()
