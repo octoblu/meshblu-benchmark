@@ -13,7 +13,8 @@
     "meshblu-benchmark-subscription-list": "./command-subscription-list.js",
     "mb": "./command.js",
     "mb-message-webhook": "./command-message-webhook.js",
-    "mb-authenticate-blast": "./command-authenticate-blast.js"
+    "mb-authenticate-blast": "./command-authenticate-blast.js",
+    "mb-subscription-list": "./command-subscription-list.js"
   },
   "repository": {
     "type": "git",
