@@ -36,7 +36,7 @@ class CommandSubscriptionList
       protocol: 'http'
       hostname: hostname
       port: port
-      pathname: "/device/#{uuid}/subscriptions"
+      pathname: "/devices/#{uuid}/subscriptions"
 
     requestOption =
       url: uri
