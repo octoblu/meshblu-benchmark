@@ -9,8 +9,11 @@
   "bin": {
     "meshblu-benchmark": "./command.js",
     "meshblu-benchmark-message-webhook": "./command-message-webhook.js",
+    "meshblu-benchmark-authenticate-blast": "./command-authenticate-blast.js",
+    "meshblu-benchmark-subscription-list": "./command-subscription-list.js",
     "mb": "./command.js",
-    "mb-message-webhook": "./command-message-webhook.js"
+    "mb-message-webhook": "./command-message-webhook.js",
+    "mb-authenticate-blast": "./command-authenticate-blast.js"
   },
   "repository": {
     "type": "git",
