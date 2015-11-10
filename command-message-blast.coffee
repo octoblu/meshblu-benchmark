@@ -20,6 +20,7 @@ class CommandMessageWebhook
     {@numberOfMessages,@cycles,@type} = commander
 
   run: =>
+    @registeredDevices = []
     @parseOptions()
     @elapsedTimes = []
     @startTimes = {}
@@ -107,17 +108,26 @@ class CommandMessageWebhook
         successfulRoundTrips: _.size(@elapsedTimes)
         percentile90: @nthPercentile(90, @elapsedTimes)
         median: @nthPercentile(50, @elapsedTimes)
-        averageHttpToEnd: @averageTimeBetween @messages, 'http', 'end'
-        averageWorkerToEnd: @averageTimeBetween @messages, 'worker', 'end'
-        medianNumberOfMessagesReceived: @nthPercentile 50, @receivedMessages
-      process.exit 0
+        averageRoutedToEnd: @averageTimeBetween @messages, 'routed', 'end'
+        averageParseStartToEnd: @averageTimeBetween @messages, 'parseStart', 'end'
+
+      async.each @registeredDevices, @unregister, =>
+        @registeredDevices = []
+        process.exit 0
     , 2000
 
   register: (callback) =>
-    benchmark = new Benchmark label: 'register'
     meshbluConfig = new MeshbluConfig
     meshbluHttp = new MeshbluHttp meshbluConfig.toJSON()
-    meshbluHttp.register {}, callback
+    meshbluHttp.register {}, (error, device) =>
+      return callback error if error?
+      @registeredDevices.push device
+      callback null, device
+
+  unregister: (device, callback) =>
+    meshbluConfig = new MeshbluConfig
+    meshbluHttp = new MeshbluHttp meshbluConfig.toJSON()
+    meshbluHttp.unregister device, callback
 
   registerReceiverAndSenders: (callback) =>
     async.parallel {
@@ -181,7 +191,6 @@ class CommandMessageWebhook
 
     conn = new MeshbluWebsocket config
     conn.connect (error) =>
-      debug 'subscribeToDevice', error
       return callback error if error?
       conn.on 'message', @onMessage
       # conn.uuid = device.uuid
