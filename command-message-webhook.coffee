@@ -54,20 +54,16 @@ class CommandMessageWebhook
 
   register: (callback) =>
     debug 'register'
-    config = new MeshbluConfig
-    meshbluHttp = new MeshbluHttp config.toJSON()
+    config = new MeshbluConfig().toJSON()
+    meshbluHttp = new MeshbluHttp config
     meshbluHttp.register @deviceOptions(), (error, device) =>
       callback error, device
 
   message: (device, callback) =>
     debug 'message'
-    # meshbluConfig = new MeshbluConfig
-    # config = _.extend meshbluConfig.toJSON(), _.pick(device, 'uuid', 'token')
-    config =
-      uuid:  device.uuid
-      token: device.token
-      server: 'localhost'
-      port: '6000'
+    config = new MeshbluConfig().toJSON()
+    config.uuid  = device.uuid
+    config.token = device.token
 
     meshbluHttp = new MeshbluHttp config
     meshbluHttp.message devices: [device.uuid], callback
@@ -88,6 +84,7 @@ class CommandMessageWebhook
       console.log request.headers.date
       console.log request.headers.authorization
       @server.removeListener 'request', listener
+      callback()
 
     @server.on 'request', listener
 
